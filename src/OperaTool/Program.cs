@@ -23,7 +23,7 @@ namespace OperaTool
 					{
 						opera.DecompileFS(filename, path);
 
-						opera.CompileFSFromMemory("compile.iso");
+						//opera.CompileFSFromMemory("compile.iso");
 					}
 					else
 						ShowHelp();
@@ -47,9 +47,10 @@ namespace OperaTool
 
 		private static void ShowHelp()
 		{
-			//Console.WriteLine("OperaTool 0.01a - By Cristina Ramos");
-			//Console.WriteLine("Usage: OperaTool -d filename.iso path");
-			//Console.WriteLine("Usage: OperaTool -c path filename.iso");
+			Console.WriteLine("OperaTool 0.01a - By Cristina Ramos");
+			Console.WriteLine("Usage:");
+      Console.WriteLine("(Decompile disc) OperaTool -d filename.iso path");
+			Console.WriteLine("(Compile disc)   OperaTool -c path filename.iso");
 		}
 	}
 }
