@@ -2,8 +2,7 @@
 
 = Introduction =
 
-
-
+Disc decompiler/compiler. Still in the works. 
 
 = Usage =
 
