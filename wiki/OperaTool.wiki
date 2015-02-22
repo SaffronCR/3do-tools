@@ -11,4 +11,3 @@ OperaTool -d filename.iso path
 
 Compile disc:
 OperaTool -c path filename.iso
-		}
