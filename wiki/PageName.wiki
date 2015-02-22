@@ -7,7 +7,9 @@ These are a collection of tools suited for 3DO homebrew development.
 = Projects =
 
 * 3DOHomebrewSigning
+
 Disc signing tool created by Charles Doty. It will be modified in the future.
 
 * OperaTool
+
 Disc decompiler/compiler. Still in the works.
