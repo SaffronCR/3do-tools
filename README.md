@@ -1,7 +1,6 @@
-## 3do-tools
+# 3do-tools
 
 These are a collection of tools suited for 3DO homebrew development.
-Projects
 
 ## 3DOHomebrewSigning
 
