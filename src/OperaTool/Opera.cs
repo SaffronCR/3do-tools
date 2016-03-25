@@ -248,7 +248,7 @@ namespace OperaTool
             BlockInfo block = m_blocks[i];
             if (block.type == BlockType.Data)
             {
-              Console.WriteLine("Block " + i + ": Data");
+              //Console.WriteLine("Block " + i + ": Data");
 
               // Write file data.
               m_bw.Write(block.data);
@@ -260,11 +260,11 @@ namespace OperaTool
 
               i += blockCount;
 
-              Console.WriteLine("size: " + blockCount);
+              //Console.WriteLine("size: " + blockCount);
             }
             else if (block.type == BlockType.Header)
             {
-              Console.WriteLine("Block " + i + ": Header");
+              //Console.WriteLine("Block " + i + ": Header");
 
               // Directory header.
               m_bw.Write(Util.UInt32ToArray(block.directoryHeader.nextBlock));
@@ -316,10 +316,6 @@ namespace OperaTool
             Console.WriteLine("Block " + i + ": Empty");
             WriteDuck();
             i++;
-
-            //m_br.BaseStream.Seek(i * m_volumeHeader.blockSize, SeekOrigin.Begin);
-            //m_bw.Write(m_br.ReadBytes((int)m_volumeHeader.blockSize));
-            //i++;
           }
         }
 
@@ -436,7 +432,6 @@ namespace OperaTool
       {
         FileStream fs = new FileStream(filename, FileMode.Create);
         m_bw = new BinaryWriter(fs);
-        //----------
 
         //-----------------------------
         // The first block is special.
@@ -488,20 +483,14 @@ namespace OperaTool
         // Duck this block.
         WriteDuck();
 
-        Console.WriteLine("Blocks: " + m_volumeHeader.blockCount);
-        Console.WriteLine("Block " + 0 + ": Volume and Root Header");
+        //Console.WriteLine("Blocks: " + m_volumeHeader.blockCount);
+        //Console.WriteLine("Block " + 0 + ": Volume and Root Header");
 
         //-----------------------------
         // Write standard blocks.
 
-        //for (UInt32 i = 1; i < m_volumeHeader.blockCount;)
-        //{
-        //if (m_headerBlocks.ContainsKey(i) == true)
         foreach (KeyValuePair<uint, BlockInfo> headerBlock in m_headerBlocks)
         {
-          // do something with entry.Value or entry.Key
-
-          //BlockInfo block = m_headerBlocks[i];
           BlockInfo block = headerBlock.Value;
 
           // Directory header.
@@ -517,8 +506,6 @@ namespace OperaTool
             m_bw.Write(Util.UInt32ToArray(block.entryHeaders[j].flags));
             m_bw.Write(Util.UInt32ToArray(block.entryHeaders[j].id));
 
-            //for (int k = 0; k < block.entryHeaders[j].type.Length; k++)
-            //  m_bw.Write(block.entryHeaders[j].type[k]);
             m_bw.Write(block.entryHeaders[j].type);
 
             m_bw.Write(Util.UInt32ToArray(block.entryHeaders[j].blockSize));
@@ -529,11 +516,10 @@ namespace OperaTool
 
             for (int k = 0; k < block.entryHeaders[j].filename.Length; k++)
               m_bw.Write(block.entryHeaders[j].filename[k]);
-            //m_bw.Write(block.entryHeaders[j].filename.ToString());
 
-            for (int k = 0; k < block.entryHeaders[j].filename.Length; k++)
-              Console.Write((char)block.entryHeaders[j].filename[k]);
-            Console.WriteLine("");
+            //for (int k = 0; k < block.entryHeaders[j].filename.Length; k++)
+            //  Console.Write((char)block.entryHeaders[j].filename[k]);
+            //Console.WriteLine("");
 
             m_bw.Write(Util.UInt32ToArray(block.entryHeaders[j].avatarsCount));
 
@@ -543,33 +529,17 @@ namespace OperaTool
 
           // Duck this block.
           WriteDuck();
-
-          //i++;
         }
 
-        //else if (m_dataBlocks.ContainsKey(i - (uint)m_headerBlocks.Count) == true)
         foreach (KeyValuePair<uint, BlockInfo> dataBlock in m_dataBlocks)
         {
-          {
-            //BlockInfo block = m_dataBlocks[i - (uint)m_headerBlocks.Count];
-            BlockInfo block = dataBlock.Value;
+          BlockInfo block = dataBlock.Value;
 
-            // Write file data.
-            m_bw.Write(block.data);
+          // Write file data.
+          m_bw.Write(block.data);
 
-            // Duck final block.
-            WriteDuck();
-
-            //i += (UInt32)((block.data.Length + m_volumeHeader.blockSize - 1) / m_volumeHeader.blockSize);
-            //i = (UInt32)((m_bw.BaseStream.Position + m_volumeHeader.blockSize - 1) / m_volumeHeader.blockSize);
-          }
-          //else
-          //{
-          //  // Empty block.
-          //  Console.WriteLine("Block " + i + ": Empty");
-          //  WriteDuck();
-          //  i++;
-          //}
+          // Duck final block.
+          WriteDuck();
         }
 
         //----------
@@ -607,6 +577,9 @@ namespace OperaTool
               entry.avatars[0] = dataBlockOffset + dataBlocks[indexFile];
 
               block.entryHeaders[j] = entry;
+
+              if (Encoding.ASCII.GetString(entry.filename).Contains("rom_tags") == true)
+                Console.WriteLine("rom_tags position: " + entry.avatars[0]);
 
               indexFile++;
             }
@@ -653,7 +626,7 @@ namespace OperaTool
       int dirCountTotal = 0;
       int fileCountTotal = 0;
 
-      UInt32 avatarPosition = 0;
+      UInt32 avatarPosition = 2;
 
       Queue<String> queue = new Queue<String>();
       queue.Enqueue(path);
@@ -679,11 +652,15 @@ namespace OperaTool
             isFirstBlock = false;
           }
 
+          UInt32 blockCountAvatarOffset = (UInt32)((totalEntriesCount + m_maxEntryHeadersPerBlock - 1) / m_maxEntryHeadersPerBlock);
+
+          String lastIndexDir = String.Empty;
+
           // Directories.
           foreach (String subDir in Directory.GetDirectories(path))
           {
             queue.Enqueue(subDir);
-            Console.WriteLine(subDir);
+            //Console.WriteLine(subDir);
 
             dirCountTotal++;
 
@@ -705,24 +682,25 @@ namespace OperaTool
             //eh.avatars = // Remember: must add actual avatar array later.
             eh.avatars = new UInt32[1];
 
-            //--
-            //{
-            //  BlockInfo block = m_headerBlocks[currentHBlock];
-            //  if (block.entryHeaders != null)
-            //    avatarPosition += block.entryHeaders[block.entryHeaders.Count - 1].blockCount;
-            //}
-            //--
+            //----------------------------
+            // Calculate avatar position.
 
-            avatarPosition += eh.blockCount;
             eh.avatars[0] = avatarPosition;
 
-            // TODO...
+            avatarPosition += eh.blockCount;
+
+            if (eh.blockCount * m_maxEntryHeadersPerBlock == currentEntriesCount)
+              avatarPosition++;
+
+            //----------------------------
 
             // Check if this is the last dir entry of the dir.
             if (totalIndexEntry == totalEntriesCount)
             {
               eh.flags |= 0x80000000;
               eh.flags |= 0x40000000;
+
+              //avatarPosition += eh.blockCount;
             }
             // Check if this is the last dir entry in the block.
             else if (indexEntry + 1 == m_maxEntryHeadersPerBlock)
@@ -757,15 +735,13 @@ namespace OperaTool
           {
             fileCountTotal++;
 
-            Console.WriteLine(file);
+            //Console.WriteLine(file);
 
             // Create data block.
             BlockInfo dataBlock = new BlockInfo();
             dataBlock.data = File.ReadAllBytes(file);
             m_dataBlocks[currentDBlock] = dataBlock;
             currentDBlock += (UInt32)(dataBlock.data.Length / m_blockSize) + 1;
-
-            //Console.WriteLine("currentDBlock: " + currentDBlock);
 
             // Create entry.
             EntryHeader eh = new EntryHeader();
@@ -800,6 +776,8 @@ namespace OperaTool
               indexEntry = 1;
               blockOffset++;
 
+              //avatarPosition++;
+
               // Set the info about the new block in the older one.
               BlockInfo oldBlock = m_headerBlocks[currentHBlock];
               oldBlock.directoryHeader.nextBlock = blockOffset;
@@ -831,48 +809,30 @@ namespace OperaTool
     {
       // Record type.
       m_volumeHeader.recordType = m_br.ReadByte();
-      //Console.WriteLine("Record type: 0x{0:X1}", recordType);
 
       // Synchronization bytes.
       m_volumeHeader.syncBytes = m_br.ReadBytes(m_syncSize);
-      //Console.Write("Synchronization bytes: ");
-      //for (int i = 0; i < m_syncSize; i++)
-      //  Console.Write("0x{0:X1} ", sync[i]);
-      //Console.Write(Environment.NewLine);
 
       // Record version.
       m_volumeHeader.structureVersion = m_br.ReadByte();
-      //Console.WriteLine("Record version: 0x{0:X1}", recordVersion);
 
       // Volume flags.
       m_volumeHeader.flags = m_br.ReadByte();
-      //Console.WriteLine("Volume flags: 0x{0:X1}", volumeFlags);
 
       // Volume comment.
       m_volumeHeader.comment = m_br.ReadBytes(m_volumeCommentSize);
-      Console.Write("Volume comment: ");
-      for (int i = 0; i < m_volumeCommentSize; i++)
-        Console.Write((Char)m_volumeHeader.comment[i]);
-      Console.Write(Environment.NewLine);
 
       // Volume label.
       m_volumeHeader.label = m_br.ReadBytes(m_volumeLabelSize);
-      Console.Write("Volume label: ");
-      for (int i = 0; i < m_volumeLabelSize; i++)
-        Console.Write((Char)m_volumeHeader.label[i]);
-      Console.Write(Environment.NewLine);
 
       // Volume identifier.
       m_volumeHeader.identifier = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      Console.WriteLine("Volume identifier: " + m_volumeHeader.identifier);
 
       // Block size.
       m_volumeHeader.blockSize = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Block size: " + blockSize);
 
       // Block count.
       m_volumeHeader.blockCount = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      Console.WriteLine("Block count: " + m_volumeHeader.blockCount);
     }
 
     private void ReadRootDirectory()
@@ -889,21 +849,17 @@ namespace OperaTool
 
       // Block size.
       m_rootHeader.blockSize = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Block size: " + blockSize);
 
       // Avatars count (total amount = avatarsCount + 1, since the original isn't counted as an Avatar).
       m_rootHeader.avatarsCount = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Avatars count: " + avatarsCount);
 
       // locations of the header, in blocks, counted from the beginning of the disk.
       m_rootHeader.avatars = new UInt32[m_rootHeader.avatarsCount + 1];
-      //Console.Write("Locations of the header: ");
+
       for (int i = 0; i < m_rootHeader.avatarsCount + 1; i++)
       {
         m_rootHeader.avatars[i] = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.Write(avatars[i] + " ");
       }
-      //Console.Write(Environment.NewLine);
     }
 
     private void ReadDirectory(UInt32 initialBlock, UInt32 offsetBlocks, String currentPath)
@@ -915,28 +871,21 @@ namespace OperaTool
       m_br.BaseStream.Seek(currentBlock * m_rootHeader.blockSize, SeekOrigin.Begin);
 
       // Directory header.
-      //Console.Write(Environment.NewLine);
-      //Console.WriteLine("Directory header:");
 
       // Next block in this directory (always 0xffffffff for the last block).
       dh.nextBlock = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Next block: 0x{0:X1}", nextBlock);
 
       // Previous block in this directory (always 0xffffffff for the first block).
       dh.prevBlock = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Previous block: 0x{0:X1}", prevBlock);
 
       // Flags.
       dh.flags = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("Flags: 0x{0:X1}", flags);
 
       // Offset from the beginning of the block to the first unused byte in the block.
       dh.firstFreeByte = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      Console.WriteLine("First unused byte: " + dh.firstFreeByte);
 
       // Offset from the beginning of the block to the first directory entry in this block (always (?) 0x14).
       dh.firstEntryOffset = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-      //Console.WriteLine("First directory entry: 0x{0:X1}", firstEntry);
 
       // Add directory header to the list.
       m_directoryHeaderList.Add(dh);
@@ -974,14 +923,13 @@ namespace OperaTool
       while (lastEntry == false)
       {
         // Entry.
-        Console.Write(Environment.NewLine);
-        Console.WriteLine("Entry: ");
+        //Console.Write(Environment.NewLine);
+        //Console.WriteLine("Entry: ");
 
         EntryHeader eh = new EntryHeader();
 
         // Flags.
         eh.flags = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Flags: 0x{0:X1}", flags);
 
         // Convert flags.
         EntryFlags entryFlags = EntryFlags.None;
@@ -995,29 +943,22 @@ namespace OperaTool
         else if ((eh.flags & 0x06) == 0x06) entryFlags |= EntryFlags.SpecialFile;
         else if ((eh.flags & 0x02) == 0x02) entryFlags |= EntryFlags.File;
 
-        //Console.WriteLine("currentFlags: " + entryFlags);
-
-        // Check if this is the last entry.
-        //if (entryFlags.HasFlag(EntryFlags.LastEntryInBlock) == true ||
-        //  entryFlags.HasFlag(EntryFlags.LastEntryInDir) == true)
-
         if (entryFlags.HasFlag(EntryFlags.LastEntryInDir) == true)
           lastEntry = true;
 
         // Identifier.
         eh.id = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Identifier: " + eh.id);
 
         // Type.
         eh.type = m_br.ReadBytes(m_entryTypeSize);
-        Console.Write("Type: ");
-        for (int i = 0; i < m_entryTypeSize; i++)
-          Console.Write((Char)eh.type[i]);
-        Console.Write(Environment.NewLine);
+
+        //Console.Write("Type: ");
+        //for (int i = 0; i < m_entryTypeSize; i++)
+        //  Console.Write((Char)eh.type[i]);
+        //Console.Write(Environment.NewLine);
 
         // Block size.
         eh.blockSize = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Block size: " + blockSize);
 
         // failsafe: Read error, return immediately.
         if (eh.blockSize != m_rootHeader.blockSize)
@@ -1027,44 +968,41 @@ namespace OperaTool
 
         // Length of the entry in bytes.
         eh.byteCount = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //if (entryFlags.HasFlag(EntryFlags.Directory))
-        //  Console.WriteLine("Length in bytes: " + eh.byteCount);
 
         // Length of the entry in blocks.
         eh.blockCount = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        Console.WriteLine("BlockCount: " + eh.blockCount);
+        //Console.WriteLine("BlockCount: " + eh.blockCount);
 
         // Burst.
         eh.burst = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Burst: " + burst);
 
         // Gap.
         eh.gap = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Gap: " + gap);
 
         // Filename.
         eh.filename = m_br.ReadBytes(m_filenameSize);
-        Console.Write("Filename: ");
-        for (int i = 0; i < m_filenameSize; i++)
-          Console.Write((Char)eh.filename[i]);
-        Console.Write(Environment.NewLine);
+
+        //Console.Write("Filename: ");
+        //for (int i = 0; i < m_filenameSize; i++)
+        //  Console.Write((Char)eh.filename[i]);
+        //Console.Write(Environment.NewLine);
 
         // Number of avatars.
         eh.avatarsCount = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-        //Console.WriteLine("Avatars count: " + avatarsCount);
 
         // Offset to the avatars, from the beginning of the disk, in blocks.
         eh.avatars = new UInt32[eh.avatarsCount + 1];
-        Console.Write("Locations of the avatars: ");
+        //Console.Write("Locations of the avatars: ");
         for (int i = 0; i < eh.avatarsCount + 1; i++)
         {
           eh.avatars[i] = Util.ArrayToUint32(m_br.ReadBytes(sizeof(UInt32)));
-          Console.Write(eh.avatars[i] + " ");
+          //Console.Write(eh.avatars[i] + " ");
         }
-        Console.Write(Environment.NewLine);
+        //Console.Write(Environment.NewLine);
 
         // Add entry header to the list.
         m_entryHeaderList.Add(eh);
+
         //--
         if (m_blocks.ContainsKey(currentBlock) == false)
           m_blocks[currentBlock] = new BlockInfo();
@@ -1078,21 +1016,17 @@ namespace OperaTool
         m_blocks[currentBlock] = block;
         //--
 
-        //--
-        if (entryFlags.HasFlag(EntryFlags.SpecialFile) == true)
-        {
-          Console.Write("Special File: ");
-          for (int i = 0; i < m_filenameSize; i++)
-            Console.Write((Char)eh.filename[i]);
-          Console.Write(Environment.NewLine);
-        }
-        //--
+        //if (entryFlags.HasFlag(EntryFlags.SpecialFile) == true)
+        //{
+        //  Console.Write("Special File: ");
+        //  for (int i = 0; i < m_filenameSize; i++)
+        //    Console.Write((Char)eh.filename[i]);
+        //  Console.Write(Environment.NewLine);
+        //}
 
         // Create directory.
         if (entryFlags.HasFlag(EntryFlags.Directory) == true)
         {
-          //Console.WriteLine("directory copies: " + eh.avatarsCount);
-
           // Store the current position.
           long currentPosition = m_br.BaseStream.Position;
 
@@ -1101,7 +1035,6 @@ namespace OperaTool
           String unicode = Encoding.Unicode.GetString(bytes).Trim('\0');
 
           String dirPath = currentPath + m_separator + unicode;
-          //Console.WriteLine("Creating directory '" + unicode + "'...");
 
           ReadDirectory(eh.avatars[0], 0, dirPath);
 
@@ -1110,16 +1043,6 @@ namespace OperaTool
         }
         else // Write file.
         {
-          //if (Encoding.ASCII.GetString(eh.type).Equals("*lbl") == true)
-          //	Console.WriteLine("label identifier: " + eh.id);
-          //  Console.WriteLine("byte count: " + eh.byteCount);
-          //  Console.WriteLine("copy: " + eh.avatars[0]);
-          //  Console.WriteLine("label copies: " + eh.avatarsCount);
-
-          //if (entryFlags.HasFlag(EntryFlags.SpecialFile) == false ||
-          //  (Encoding.ASCII.GetString(eh.filename).Contains("Disc label") == false &&
-          //    Encoding.ASCII.GetString(eh.type).Equals("*lbl") == false))
-
           // [CRIS] special case: Disc label is the header of the FileSystem referenced as a file. Do not create this file.
           if (Encoding.ASCII.GetString(eh.filename).Contains("Disc label") == false &&
               Encoding.ASCII.GetString(eh.type).Equals("*lbl") == false)
@@ -1164,7 +1087,6 @@ namespace OperaTool
         m_blocks[currentBlock] = block;
         //--
 
-        //bw.Write(m_br.ReadBytes((int)fileSize));
         bw.Write(data);
 
         bw.Close();
