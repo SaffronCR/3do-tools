@@ -966,6 +966,20 @@ bool C3DODisk::FindRomTagFiles(FILE *Handle)
 
 		DWORD	NumEntries = DWORDSwap(Value) / s_iDirEntrySize;
 
+		//If the number of files in this block is invalid, exit
+		if (NumEntries <= 0 || NumEntries > 28)
+		{
+			if (!bFoundLaunchme)
+			{
+				printf("Could not find launchme!\n");
+			}
+			if (!bFoundSignatures)
+			{
+				printf("Could not find signatures!\n");
+			}
+			return false;
+		}
+
 		// Read Offset
 		fread(&Value, sizeof(DWORD), 1, Handle);
 
@@ -1049,8 +1063,28 @@ bool C3DODisk::FindRomTagFiles(FILE *Handle)
 			}
 		}
 
-		// Skip to next block by jumping ahead 12 bytes
-		fseek(Handle, 12, SEEK_CUR);
+		if (!bFoundLaunchme || !bFoundSignatures)
+		{
+			// If we haven't found all the files and the last block size had the max amount of files, then there might be more blocks to search
+			if (NumEntries == 28)
+			{
+				// Skip to next block by jumping ahead 12 bytes
+				fseek(Handle, 12, SEEK_CUR);
+			}
+			else
+			{
+				if (!bFoundLaunchme)
+				{
+					printf("Could not find launchme!\n");
+				}
+				if (!bFoundSignatures)
+				{
+					printf("Could not find signatures!\n");
+				}
+				return false;
+			}
+		}
+		
 	}
 	return	true;
 }
