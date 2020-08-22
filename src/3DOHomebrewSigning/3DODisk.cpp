@@ -952,94 +952,140 @@ bool C3DODisk::FindRomTagFiles(FILE *Handle)
 	// Skip the header info
 	fseek(Handle, Value, SEEK_SET);
 
-	// Read the number of directory entries
-	fseek(Handle, 12, SEEK_CUR);
+	// Loop through the root blocks until we find these files
+	bool bFoundLaunchme = false;
+	bool bFoundSignatures = false;
 
-	fread(&Value, sizeof(DWORD), 1, Handle);
-
-	DWORD	NumEntries = DWORDSwap(Value) / s_iDirEntrySize;
-
-	// Read Offset
-	fread(&Value, sizeof(DWORD), 1, Handle);
-
-	Value = DWORDSwap(Value) - 0x14;
-
-	// Skip to first entry
-	if (Value > 0)
+	while (!bFoundLaunchme || !bFoundSignatures)
 	{
-		fseek(Handle, Value, SEEK_CUR);
-	}
 
-	for (DWORD iLoop = 0; iLoop < NumEntries; ++iLoop)
-	{
-		char	EntryName[s_iFilenameSize];
-
-		// Read the type
-		fread(&Value, sizeof(DWORD), 1, Handle);
-
-		Value = DWORDSwap(Value);
-
-		// Skip flags and stuff
+		// Read the number of directory entries
 		fseek(Handle, 12, SEEK_CUR);
 
-		// Get the file size
 		fread(&Value, sizeof(DWORD), 1, Handle);
 
-		int	iFileSize = DWORDSwap(Value);
+		DWORD	NumEntries = DWORDSwap(Value) / s_iDirEntrySize;
 
-		// Skip flags and stuff
-		fseek(Handle, 12, SEEK_CUR);
-
-		// Read the filename
-		fread(EntryName, 1, s_iFilenameSize, Handle);
-
-		// Found the signature file, get the starting sector number
-		if (!_stricmp("launchme", EntryName))
+		//If the number of files in this block is invalid, exit
+		if (NumEntries <= 0 || NumEntries > 28)
 		{
-			// Skip the entry count
-			fseek(Handle, 4, SEEK_CUR);
-
-			// Get the starting address
-			fread(&Value, sizeof(DWORD), 1, Handle);
-
-			m_iLaunchMeStart = DWORDSwap(Value);
-			m_iLaunchMeSize = iFileSize;
-
-			printf("Found launchme at sector %X\n", m_iLaunchMeStart);
+			if (!bFoundLaunchme)
+			{
+				printf("Could not find launchme!\n");
+			}
+			if (!bFoundSignatures)
+			{
+				printf("Could not find signatures!\n");
+			}
+			return false;
 		}
 
-		// Found the signature file, get the starting sector number
-		else if (!_stricmp("signatures", EntryName))
+		// Read Offset
+		fread(&Value, sizeof(DWORD), 1, Handle);
+
+		Value = DWORDSwap(Value) - 0x14;
+
+		// Skip to first entry
+		if (Value > 0)
 		{
-			// Skip the entry count
-			fseek(Handle, 4, SEEK_CUR);
-
-			// Get the starting address
-			fread(&Value, sizeof(DWORD), 1, Handle);
-
-			m_iSignatureStart = DWORDSwap(Value);
-			m_iSignatureSize = iFileSize;
-
-			printf("Found signatures at sector %X\n", m_iSignatureStart);
+			fseek(Handle, Value, SEEK_CUR);
 		}
 
-		else
+		for (DWORD iLoop = 0; iLoop < NumEntries; ++iLoop)
 		{
-			// Get the entry count
+			char	EntryName[s_iFilenameSize];
+
+			// Read the type
 			fread(&Value, sizeof(DWORD), 1, Handle);
 
 			Value = DWORDSwap(Value);
 
-			if (Value > 0)
+			// Skip flags and stuff
+			fseek(Handle, 12, SEEK_CUR);
+
+			// Get the file size
+			fread(&Value, sizeof(DWORD), 1, Handle);
+
+			int	iFileSize = DWORDSwap(Value);
+
+			// Skip flags and stuff
+			fseek(Handle, 12, SEEK_CUR);
+
+			// Read the filename
+			fread(EntryName, 1, s_iFilenameSize, Handle);
+
+			// Found the launchme file, get the starting sector number
+			if (!_stricmp("launchme", EntryName))
 			{
-				fseek(Handle, Value * 4, SEEK_CUR);
+				// Skip the entry count
+				fseek(Handle, 4, SEEK_CUR);
+
+				// Get the starting address
+				fread(&Value, sizeof(DWORD), 1, Handle);
+
+				m_iLaunchMeStart = DWORDSwap(Value);
+				m_iLaunchMeSize = iFileSize;
+				bFoundLaunchme = true;
+
+				printf("Found launchme at sector %X\n", m_iLaunchMeStart);
 			}
 
-			// Skip the rest
-			fseek(Handle, 4, SEEK_CUR);
-		}
-	}
+			// Found the signature file, get the starting sector number
+			else if (!_stricmp("signatures", EntryName))
+			{
+				// Skip the entry count
+				fseek(Handle, 4, SEEK_CUR);
 
+				// Get the starting address
+				fread(&Value, sizeof(DWORD), 1, Handle);
+
+				m_iSignatureStart = DWORDSwap(Value);
+				m_iSignatureSize = iFileSize;
+				bFoundSignatures = true;
+
+				printf("Found signatures at sector %X\n", m_iSignatureStart);
+			}
+
+			else
+			{
+				// Get the entry count
+				fread(&Value, sizeof(DWORD), 1, Handle);
+
+				Value = DWORDSwap(Value);
+
+				if (Value > 0)
+				{
+					fseek(Handle, Value * 4, SEEK_CUR);
+				}
+
+				// Skip the rest
+				fseek(Handle, 4, SEEK_CUR);
+			}
+		}
+
+		if (!bFoundLaunchme || !bFoundSignatures)
+		{
+			// If we haven't found all the files and the last block size had the max amount of files, then there might be more blocks to search
+			if (NumEntries == 28)
+			{
+				// Skip to next block by jumping ahead 12 bytes
+				fseek(Handle, 12, SEEK_CUR);
+			}
+			else
+			{
+				if (!bFoundLaunchme)
+				{
+					printf("Could not find launchme!\n");
+				}
+				if (!bFoundSignatures)
+				{
+					printf("Could not find signatures!\n");
+				}
+				return false;
+			}
+		}
+		
+	}
 	return	true;
 }
 
